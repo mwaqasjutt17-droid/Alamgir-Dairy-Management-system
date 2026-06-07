@@ -29,7 +29,7 @@ const isLocal = window.location.protocol === 'file:' ||
   window.location.origin === 'null' || 
   ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '5000');
 
-const PROD_API_URL = 'https://alamgir-dairy-management-system-unx.vercel.app/api';
+const PROD_API_URL = 'https://alamgir-dairy-management-system-hx4.vercel.app/api';
 
 const API_URL = isLocal ? 'http://localhost:5000/api' : PROD_API_URL;
 
