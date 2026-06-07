@@ -16,14 +16,23 @@ const batchRoutes = require('./routes/batches');
 const fleetRoutes = require('./routes/fleet');
 const settingsRoutes = require('./routes/settings');
 
-// Connect to Database
-connectDB();
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ============ DB CONNECTION (serverless-safe cached) ============
+let isConnected = false;
+async function connectIfNeeded() {
+  if (!isConnected) {
+    await connectDB();
+    isConnected = true;
+  }
+}
+app.use(async (req, res, next) => {
+  try { await connectIfNeeded(); next(); }
+  catch (err) { next(err); }
+});
+
 // ============ SECURITY MIDDLEWARE ============
-// Set security headers
 app.use(helmet());
 
 // Rate limiting — 100 requests per 10 minutes per IP
@@ -48,15 +57,15 @@ app.use(cors({
   origin: function (origin, callback) {
     // allow requests with no origin (like file://, curl, or postman)
     if (!origin || origin === 'null') return callback(null, true);
-    
+
     // matches http://localhost:PORT or http://127.0.0.1:PORT
     const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
     const isVercel = origin.includes('vercel.app') || origin.includes('render.com');
-    
+
     if (isLocal || isVercel) {
       return callback(null, true);
     }
-    
+
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true
@@ -96,17 +105,25 @@ app.use('/api/batches', batchRoutes);
 app.use('/api/fleet', fleetRoutes);
 app.use('/api/settings', settingsRoutes);
 
+// Health check — confirms backend is live
+app.get('/', (req, res) => {
+  res.json({ success: true, message: '🥛 Alamgir Dairy API is running.' });
+});
 
 // ============ GLOBAL ERROR HANDLER ============
 app.use(errorHandler);
 
-// ============ START SERVER ============
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
+// ============ START SERVER (local only) ============
+// When run directly (node server.js), start HTTP server.
+// When imported by Vercel serverless, just export the app.
+if (require.main === module) {
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  });
+  process.on('unhandledRejection', (err) => {
+    console.error(`❌ Unhandled Rejection: ${err.message}`);
+    server.close(() => process.exit(1));
+  });
+}
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  console.error(`❌ Unhandled Rejection: ${err.message}`);
-  server.close(() => process.exit(1));
-});
+module.exports = app;

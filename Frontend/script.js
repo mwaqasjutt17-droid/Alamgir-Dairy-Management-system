@@ -29,8 +29,7 @@ const isLocal = window.location.protocol === 'file:' ||
   window.location.origin === 'null' || 
   ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '5000');
 
-// TODO: Replace this with your actual Render/Backend live URL after deployment
-const PROD_API_URL = 'https://alamgir-dairy-backend.onrender.com/api'; 
+const PROD_API_URL = 'https://alamgir-dairy-management-system-unx.vercel.app/api';
 
 const API_URL = isLocal ? 'http://localhost:5000/api' : PROD_API_URL;
 
