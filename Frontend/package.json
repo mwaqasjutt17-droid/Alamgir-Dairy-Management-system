@@ -1,0 +1,11 @@
+{
+  "name": "alamgir-dairy-frontend",
+  "version": "3.0.0",
+  "description": "Frontend dev server for Alamgir Dairy Management System",
+  "scripts": {
+    "start": "live-server --port=3000 --entry-file=index.html"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}

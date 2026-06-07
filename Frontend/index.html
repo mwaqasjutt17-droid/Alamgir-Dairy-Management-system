@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Alamgir Dairy Management System — Lab intake processing, batch quality analysis, fleet dispatch tracking, and analytics dashboard.">
+<title>Alamgir Dairy Management System</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ===== AUTH MODAL ===== */
+  .auth-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 8, 18, 0.92);
+    backdrop-filter: blur(10px);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+  }
+  .auth-overlay.active {
+    display: flex;
+  }
+  .auth-box {
+    background: #0a1220;
+    border: 1px solid #1e2d45;
+    border-radius: 16px;
+    padding: 36px 40px 32px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(77,159,255,0.08);
+    position: relative;
+    animation: authSlideIn .3s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes authSlideIn {
+    from { opacity:0; transform:translateY(-28px) scale(.97); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+  }
+  .auth-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 26px;
+  }
+  .auth-brand-icon {
+    font-size: 26px;
+    background: linear-gradient(135deg,#071a3a,#0f2d5a);
+    border: 1px solid #1e3a60;
+    border-radius: 10px;
+    padding: 8px 12px;
+  }
+  .auth-brand-text {
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: .04em;
+    color: #e8f0fe;
+  }
+  .auth-brand-text span { color: #4d9fff; }
+  .auth-tabs {
+    display: flex;
+    gap: 0;
+    background: #060e1c;
+    border: 1px solid #1e2d45;
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 24px;
+  }
+  .auth-tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #4d6585;
+    font-family: 'Sora', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all .2s;
+    letter-spacing: .03em;
+  }
+  .auth-tab-btn.active {
+    background: #0f2040;
+    color: #4d9fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .auth-form .form-group label {
+    font-size: 11px;
+    color: #4d6585;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+  .auth-form input {
+    background: #060e1c;
+    border-color: #1e2d45;
+  }
+  .auth-form input:focus {
+    border-color: #4d9fff;
+    box-shadow: 0 0 0 3px rgba(77,159,255,0.12);
+  }
+  .auth-error {
+    color: var(--red);
+    font-size: 12px;
+    font-family: 'Sora', sans-serif;
+    min-height: 16px;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .auth-divider {
+    font-size: 10px;
+    color: #2a3d55;
+    text-align: center;
+    margin: 6px 0;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+
+  /* ===== NAV USER AREA ===== */
+  .nav-user {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 1px solid #1e2d45;
+  }
+  .nav-user-name {
+    font-size: 12px;
+    font-family: 'Sora', sans-serif;
+    color: #8ea7c8;
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== AUTH MODAL ==================== -->
+<div id="authModal" class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+  <div class="auth-box">
+    <div class="auth-brand">
+      <div class="auth-brand-icon">🥛</div>
+      <div>
+        <div class="auth-brand-text">ALAMGIR <span>DAIRY</span></div>
+        <div style="font-size:10px;color:#4d6585;font-family:'Sora',sans-serif;margin-top:2px">Management System v3.0</div>
+      </div>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab-btn active" data-tab="login"    id="authTabLogin"    onclick="switchAuthTab('login')">Sign In</button>
+      <button class="auth-tab-btn"        data-tab="register" id="authTabRegister" onclick="switchAuthTab('register')">Create Account</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="loginForm" class="auth-form">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="loginEmail" placeholder="admin@alamgirdairy.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')login()">
+      </div>
+      <div class="auth-error" id="loginError"></div>
+      <button class="btn btn-primary btn-full" id="loginBtn" onclick="login()">🔑 Login</button>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="registerForm" class="auth-form" style="display:none">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="regName" placeholder="Muhammad Ahmed" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="regEmail" placeholder="ahmed@alamgirdairy.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password <span style="color:var(--text3);font-weight:400">(min 6 characters)</span></label>
+        <input type="password" id="regPassword" placeholder="••••••••" autocomplete="new-password"
+               onkeydown="if(event.key==='Enter')register()">
+      </div>
+      <div class="auth-error" id="registerError"></div>
+      <button class="btn btn-success btn-full" id="registerBtn" onclick="register()">✅ Create Account</button>
+      <div class="auth-divider">First user becomes operator. Ask admin to assign roles.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CUSTOM CONFIRMATION MODAL ==================== -->
+<div id="confirmModal" class="auth-overlay" role="dialog" aria-modal="true">
+  <div class="auth-box" style="max-width: 400px; padding: 28px 32px;">
+    <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:16px">
+      <div id="confirmIcon" style="font-size: 44px; padding: 14px; background: rgba(255, 79, 86, 0.08); border-radius: 50%; border: 1px solid rgba(255, 79, 86, 0.2); color: var(--red);">⚠️</div>
+      <div>
+        <h3 id="confirmTitle" style="font-family:'Sora',sans-serif; font-size:18px; font-weight:700; color:#e8f0fe; margin-bottom:8px">Confirm Action</h3>
+        <p id="confirmMessage" style="font-family:'Sora',sans-serif; font-size:13px; color:#a2b6cf; line-height:1.5; margin-bottom:6px">Are you sure you want to proceed?</p>
+        <p id="confirmSubtext" style="font-family:'Space Mono',monospace; font-size:11px; color:#6888b0; line-height:1.4"></p>
+      </div>
+      <div style="display:flex; gap:12px; width:100%; margin-top:8px">
+        <button id="confirmCancelBtn" class="btn btn-ghost" style="flex:1; padding: 10px 0;">Cancel</button>
+        <button id="confirmOkBtn" class="btn btn-danger" style="flex:1; padding: 10px 0;">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <div class="nav-brand">
+    <div class="brand-icon">🥛</div>
+    <div class="brand-text">
+      ALAMGIR<span> DAIRY</span>
+      <span style="color:var(--text3);font-size:10px;font-weight:400;margin-left:6px">v3.0</span>
+    </div>
+    <div class="nav-dot"></div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-page="lab"       onclick="showPage('lab', event)">⚗️ Lab Intake</button>
+    <button class="nav-tab"        data-page="history"   onclick="showPage('history', event)">📋 Batch History</button>
+    <button class="nav-tab"        data-page="fleet"     onclick="showPage('fleet', event)">🚛 Fleet</button>
+    <button class="nav-tab"        data-page="analytics" onclick="showPage('analytics', event)">📊 Analytics</button>
+    <button class="nav-tab"        data-page="admin"     onclick="showPage('admin', event)">⚙️ Admin</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+    <div class="nav-right" id="clock"></div>
+    <div class="nav-user" id="navUser"></div>
+  </div>
+</nav>
+
+<!-- ==================== LAB PAGE ==================== -->
+<div id="page-lab" class="page active container">
+
+  <div class="page-hero">
+    <div class="page-hero-icon">⚗️</div>
+    <div>
+      <div class="page-hero-title">Lab Intake &amp; Processing</div>
+      <div class="page-hero-sub">Analyse incoming batches, compute SNF, TS, pricing and generate fat slips</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <div class="status-row">
+        <div class="status-dot green"></div>
+        System Operational
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <!-- PRICING CONFIG -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:#071326">⚙️</div>
+          <span class="card-title">Pricing Engine</span>
+          <span class="badge badge-blue" style="margin-left:auto">Config</span>
+        </div>
+
+        <div class="method-toggle">
+          <button class="method-btn active" id="mBtn1" onclick="switchMethod('ts',this)">Method 1 — TS Based</button>
+          <button class="method-btn" id="mBtn2" onclick="switchMethod('twoaxis',this)">Method 2 — Two-Axis</button>
+        </div>
+
+        <select id="pricingMethod" style="display:none">
+          <option value="ts">TS Based</option>
+          <option value="twoaxis">Two-Axis</option>
+        </select>
+
+        <div id="tsConfig">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Base Rate (Rs/L)</label>
+              <input type="number" id="baseRate" value="180" min="0" step="1">
+            </div>
+            <div class="form-group">
+              <label>TS Divisor</label>
+              <input type="number" id="tsDivisor" value="13" min="1" step="0.1">
+            </div>
+          </div>
+        </div>
+        <div id="twoaxisConfig" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fat Rate (Rs/kg)</label>
+              <input type="number" id="fatRate" value="25" min="0" step="0.5">
+            </div>
+            <div class="form-group">
+              <label>SNF Rate (Rs/kg)</label>
+              <input type="number" id="snfRate" value="15" min="0" step="0.5">
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="field-section-label" style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+          Quality Thresholds
+          <span style="flex:1;height:1px;background:var(--border);display:block"></span>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>Min Fat% (Pass)</label>
+            <input type="number" id="minFat" value="3.0" step="0.1">
+          </div>
+          <div class="form-group">
+            <label>Min SNF% (Pass)</label>
+            <input type="number" id="minSnf" value="8.0" step="0.1">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>LR Adulteration Threshold</label>
+          <input type="number" id="lrThreshold" value="26" step="0.5">
+        </div>
+      </div>
+
+      <!-- LAB FORM -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:#051a10">🧪</div>
+          <span class="card-title">Lab / Manual Entry</span>
+        </div>
+        <div id="labForm" style="display:flex;flex-direction:column;gap:10px">
+
+          <div class="field-section-label" style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px;display:flex;align-items:center;gap:6px">
+            Batch Info
+            <span style="flex:1;height:1px;background:var(--border);display:block"></span>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Container / Batch ID</label>
+              <input type="text" id="containerId" placeholder="CONT-5001" required>
+            </div>
+            <div class="form-group">
+              <label>Supplier Name</label>
+              <input type="text" id="supplierName" placeholder="e.g. Farm A">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Quantity (Liters)</label>
+              <input type="number" id="quantity" placeholder="5000" step="0.01" min="0" required>
+            </div>
+            <div class="form-group">
+              <label>Intake Date</label>
+              <input type="date" id="intakeDate">
+            </div>
+          </div>
+
+          <div class="field-section-label" style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;margin:4px 0 6px;display:flex;align-items:center;gap:6px">
+            Lab Readings
+            <span style="flex:1;height:1px;background:var(--border);display:block"></span>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fat %</label>
+              <input type="number" id="fat" placeholder="3.5" step="0.1" min="0" max="15" required>
+            </div>
+            <div class="form-group">
+              <label>LR (Lactometer Reading)</label>
+              <input type="number" id="lr" placeholder="28" step="0.1" min="0" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Protein % <span style="color:var(--text3);font-size:10px;font-weight:400">(opt)</span></label>
+              <input type="number" id="protein" placeholder="3.2" step="0.1" min="0" max="10">
+            </div>
+            <div class="form-group">
+              <label>Lactose % <span style="color:var(--text3);font-size:10px;font-weight:400">(opt)</span></label>
+              <input type="number" id="lactose" placeholder="4.5" step="0.1" min="0" max="10">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Temperature °C <span style="color:var(--text3);font-size:10px;font-weight:400">(opt)</span></label>
+            <input type="number" id="temp" placeholder="4" step="0.1" min="-5" max="80">
+          </div>
+
+          <button class="btn btn-primary btn-full" style="margin-top:6px" onclick="processEntry()">
+            ⚗️ Process Batch Entry
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+
+      <!-- RESULT PANEL -->
+      <div class="result-panel fade-in" id="resultPanel">
+        <div class="glow-orb"></div>
+
+        <div class="print-only" style="text-align:center;margin-bottom:16px">
+          <h2 style="font-size:20px;font-weight:700">ALAMGIR DAIRY — FAT SLIP</h2>
+          <p style="font-size:12px;color:#555" id="printDate"></p>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+          <div>
+            <div class="result-title" id="resultTitle">BATCH ANALYSIS</div>
+            <div style="font-size:11px;color:var(--text3)" id="resultMeta"></div>
+          </div>
+          <div id="statusBadge" class="badge"></div>
+        </div>
+
+        <div class="result-grid">
+          <div class="result-metric" style="--m-color:var(--blue)">
+            <div class="m-label">Calc. SNF %</div>
+            <div class="m-value" id="outSnf">—</div>
+          </div>
+          <div class="result-metric" style="--m-color:var(--amber)">
+            <div class="m-label">Total Solids %</div>
+            <div class="m-value" id="outTs">—</div>
+          </div>
+          <div class="result-metric" style="--m-color:var(--blue)">
+            <div class="m-label">Price / Liter</div>
+            <div class="m-value" id="outPpl">—</div>
+          </div>
+          <div class="result-metric" style="--m-color:var(--green)">
+            <div class="m-label">Total Payable</div>
+            <div class="m-value" id="outTotal">—</div>
+          </div>
+        </div>
+
+        <!-- QUALITY BARS -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+          <div class="card-sm">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:11px;color:var(--text2)">Fat %</span>
+              <span style="font-size:11px;font-family:'Space Mono',monospace;color:var(--amber)" id="barFatVal">—</span>
+            </div>
+            <div class="quality-bar">
+              <div class="quality-fill" id="barFat" style="background:linear-gradient(90deg,var(--amber),#ffd08a);width:0%"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">Standard ≥ 3.0%</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:11px;color:var(--text2)">SNF %</span>
+              <span style="font-size:11px;font-family:'Space Mono',monospace;color:var(--blue)" id="barSnfVal">—</span>
+            </div>
+            <div class="quality-bar">
+              <div class="quality-fill" id="barSnf" style="background:linear-gradient(90deg,var(--blue),#8bbfff);width:0%"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">Standard ≥ 8.0%</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:11px;color:var(--text2)">Lactometer (LR)</span>
+              <span style="font-size:11px;font-family:'Space Mono',monospace;color:var(--teal)" id="barLrVal">—</span>
+            </div>
+            <div class="quality-bar">
+              <div class="quality-fill" id="barLr" style="background:linear-gradient(90deg,var(--teal),#6afff0);width:0%"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">Threshold ≥ 26</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:11px;color:var(--text2)">Total Solids (TS)</span>
+              <span style="font-size:11px;font-family:'Space Mono',monospace;color:var(--purple)" id="barTsVal">—</span>
+            </div>
+            <div class="quality-bar">
+              <div class="quality-fill" id="barTs" style="background:linear-gradient(90deg,var(--purple),#d4aaff);width:0%"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">Good ≥ 11%</div>
+          </div>
+        </div>
+
+        <!-- ALERTS -->
+        <div id="alertAdulteration" class="alert alert-red" style="display:none">
+          <span class="alert-icon">⚠️</span>
+          <div><strong>Adulteration Warning:</strong> Low LR indicates possible water dilution. Batch flagged for re-testing.</div>
+        </div>
+        <div id="alertTemp" class="alert alert-amber" style="display:none">
+          <span class="alert-icon">🌡️</span>
+          <div><strong>Temperature Alert:</strong> Milk temperature exceeds safe storage range. Risk of spoilage.</div>
+        </div>
+
+        <!-- BREAKDOWN TABLE -->
+        <div class="divider"></div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.09em;font-weight:600">
+          📐 Calculation Breakdown
+        </div>
+        <div class="table-wrap">
+          <table>
+            <tbody id="breakdownTable" style="font-size:12px"></tbody>
+          </table>
+        </div>
+
+        <div class="divider"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Print Fat Slip</button>
+          <button class="btn btn-success btn-sm" onclick="saveBatch()">💾 Save to History</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetForm()">🔄 New Entry</button>
+        </div>
+      </div>
+
+      <!-- RECENT BATCHES MINI TABLE -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:#0d1b2e">📦</div>
+          <span class="card-title">Recent Batches</span>
+          <span class="badge-count" style="margin-left:auto" id="batchCount">0</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Batch ID</th>
+                <th>Fat%</th>
+                <th>SNF%</th>
+                <th>Qty(L)</th>
+                <th>Rs/L</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="recentTable">
+              <tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">No batches yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== HISTORY PAGE ==================== -->
+<div id="page-history" class="page container">
+
+  <div class="page-hero">
+    <div class="page-hero-icon">📋</div>
+    <div>
+      <div class="page-hero-title">Batch History</div>
+      <div class="page-hero-sub">Complete record of all processed batches with search and export</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:#0d1b2e">🗃️</div>
+      <span class="card-title">All Batch Records</span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <input type="text" id="searchBatch" placeholder="🔍 Search by ID or supplier..." style="width:220px;font-size:12px;padding:6px 12px" oninput="renderHistory()">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 Export CSV</button>
+        <button class="btn btn-danger btn-sm" onclick="clearHistory()">🗑 Clear All</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Batch ID</th>
+            <th>Supplier</th>
+            <th>Date</th>
+            <th>Qty (L)</th>
+            <th>Fat %</th>
+            <th>LR</th>
+            <th>SNF %</th>
+            <th>TS %</th>
+            <th>Rs/L</th>
+            <th>Total (Rs)</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="historyTable">
+          <tr><td colspan="12" style="color:var(--text3);text-align:center;padding:36px">No records found</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:12px">
+      <div class="stat-card glow-blue" style="flex:1;text-align:center">
+        <div class="stat-label"><span class="dot-ind" style="background:var(--blue)"></span>Total Volume</div>
+        <div class="stat-value blue" id="sumQty">0 L</div>
+      </div>
+      <div class="stat-card glow-green" style="flex:1;text-align:center">
+        <div class="stat-label"><span class="dot-ind" style="background:var(--green)"></span>Total Payable</div>
+        <div class="stat-value green" id="sumTotal">Rs 0</div>
+      </div>
+      <div class="stat-card glow-amber" style="flex:1;text-align:center">
+        <div class="stat-label"><span class="dot-ind" style="background:var(--amber)"></span>Avg Fat %</div>
+        <div class="stat-value amber" id="avgFat">—</div>
+      </div>
+      <div class="stat-card glow-green" style="flex:1;text-align:center">
+        <div class="stat-label"><span class="dot-ind" style="background:var(--green)"></span>Pass Rate</div>
+        <div class="stat-value green" id="passRate">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== FLEET PAGE ==================== -->
+<div id="page-fleet" class="page container">
+
+  <div class="page-hero">
+    <div class="page-hero-icon">🚛</div>
+    <div>
+      <div class="page-hero-title">Fleet Management</div>
+      <div class="page-hero-sub">Track vehicles, drivers, routes and dispatch status</div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:#0a1f05">🚛</div>
+        <span class="card-title">Log Fleet Dispatch</span>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Vehicle Number</label>
+          <input type="text" id="vehicleNo" placeholder="KV-8921">
+        </div>
+        <div class="form-group">
+          <label>Driver Name</label>
+          <input type="text" id="driverName" placeholder="Muhammad Ali">
+        </div>
+        <div class="form-group">
+          <label>Route</label>
+          <input type="text" id="route" placeholder="Farm A → Main Plant">
+        </div>
+        <div class="form-group">
+          <label>Fuel (Liters)</label>
+          <input type="number" id="fuel" placeholder="45" min="0" step="0.5">
+        </div>
+        <div class="form-group">
+          <label>Cargo (Liters of Milk)</label>
+          <input type="number" id="cargo" placeholder="5000" min="0">
+        </div>
+        <div class="form-group">
+          <label>Dispatch Status</label>
+          <select id="dispatchStatus">
+            <option value="In Transit">In Transit</option>
+            <option value="Completed">Completed</option>
+            <option value="Delayed">Delayed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-success btn-full" style="margin-top:14px" onclick="addFleet()">🚛 Log Fleet Dispatch</button>
+    </div>
+
+    <div class="grid-4">
+      <div class="stat-card glow-blue">
+        <div class="stat-label"><span class="dot-ind" style="background:var(--blue)"></span>Total Vehicles</div>
+        <div class="stat-value blue" id="fleetTotal">0</div>
+      </div>
+      <div class="stat-card glow-amber">
+        <div class="stat-label"><span class="dot-ind" style="background:var(--amber)"></span>In Transit</div>
+        <div class="stat-value amber" id="fleetTransit">0</div>
+      </div>
+      <div class="stat-card glow-green">
+        <div class="stat-label"><span class="dot-ind" style="background:var(--green)"></span>Completed</div>
+        <div class="stat-value green" id="fleetDone">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Fuel Used</div>
+        <div class="stat-value" id="fleetFuel">0 L</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:#0a1520">📍</div>
+        <span class="card-title">Fleet Log</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Vehicle</th>
+              <th>Driver</th>
+              <th>Route</th>
+              <th>Cargo (L)</th>
+              <th>Fuel (L)</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="fleetTable">
+            <tr><td colspan="7" style="color:var(--text3);text-align:center;padding:36px">No fleet logs yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ANALYTICS PAGE ==================== -->
+<div id="page-analytics" class="page container">
+
+  <div class="page-hero">
+    <div class="page-hero-icon">📊</div>
+    <div>
+      <div class="page-hero-title">Analytics Dashboard</div>
+      <div class="page-hero-sub">Visual insights across all batches, quality trends and pricing</div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <div class="grid-4">
+      <div class="analytics-kpi" style="border-top:2px solid var(--blue)">
+        <div class="k-icon">📦</div>
+        <div class="k-val blue" id="an-batches">0</div>
+        <div class="k-lbl">Total Batches</div>
+      </div>
+      <div class="analytics-kpi" style="border-top:2px solid var(--teal)">
+        <div class="k-icon">🥛</div>
+        <div class="k-val" style="color:var(--teal)" id="an-vol">0 L</div>
+        <div class="k-lbl">Total Volume</div>
+      </div>
+      <div class="analytics-kpi" style="border-top:2px solid var(--green)">
+        <div class="k-icon">💰</div>
+        <div class="k-val green" id="an-paid">Rs 0</div>
+        <div class="k-lbl">Total Paid Out</div>
+      </div>
+      <div class="analytics-kpi" style="border-top:2px solid var(--red)">
+        <div class="k-icon">❌</div>
+        <div class="k-val red" id="an-rej">0</div>
+        <div class="k-lbl">Rejected Batches</div>
+      </div>
+    </div>
+
+    <div class="grid-2-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:#0a1520">📈</div>
+          <span class="card-title">Fat % Distribution</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartFat" role="img" aria-label="Fat percentage distribution chart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon" style="background:#071a0e">🥧</div>
+          <span class="card-title">Batch Quality — Pass / Fail</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartQuality" role="img" aria-label="Pass fail pie chart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:#07130a">📉</div>
+        <span class="card-title">Price Per Liter Trend</span>
+      </div>
+      <div class="chart-wrap" style="height:270px"><canvas id="chartPpl" role="img" aria-label="Price per liter trend"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ADMIN PAGE ==================== -->
+<div id="page-admin" class="page container">
+
+  <div class="page-hero">
+    <div class="page-hero-icon">⚙️</div>
+    <div>
+      <div class="page-hero-title">System Administration</div>
+      <div class="page-hero-sub">Manage settings, export data and maintain records</div>
+    </div>
+  </div>
+
+  <div class="grid-2-col" style="gap:20px">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:#0d1b2e">⚙️</div>
+        <span class="card-title">System Settings</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="form-group">
+          <label>Dairy Name</label>
+          <input type="text" id="adminName" value="Alamgir Dairy Management System">
+        </div>
+        <div class="form-group">
+          <label>Default Supplier</label>
+          <input type="text" id="adminSupplier" placeholder="Main Farm">
+        </div>
+        <div class="form-group">
+          <label>Currency Symbol</label>
+          <input type="text" id="adminCurrency" value="Rs.">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="saveAdmin()">💾 Save Settings</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon" style="background:#0a100d">📊</div>
+        <span class="card-title">Data Management</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="alert alert-amber">
+          <span class="alert-icon">🗄️</span>
+          Data is stored in MongoDB database via the backend API.
+        </div>
+        <button class="btn btn-ghost btn-full" onclick="exportCSV()">📥 Export Batch CSV</button>
+        <button class="btn btn-ghost btn-full" onclick="exportFleetCSV()">📥 Export Fleet CSV</button>
+        <button class="btn btn-danger btn-full" onclick="clearHistory()">🗑 Clear Batch History</button>
+        <button class="btn btn-danger btn-full" onclick="clearFleet()">🗑 Clear Fleet Logs</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
