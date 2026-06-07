@@ -5,7 +5,6 @@ const morgan = require('morgan');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
-const path = require('path');
 require('dotenv').config();
 
 const connectDB = require('./config/db');
@@ -97,13 +96,6 @@ app.use('/api/batches', batchRoutes);
 app.use('/api/fleet', fleetRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// Serve static frontend files
-app.use(express.static(path.join(__dirname, '../Frontend')));
-
-// Fallback to index.html for SPA routing/direct access
-app.get('/*splat', (req, res) => {
-  res.sendFile(path.join(__dirname, '../Frontend/index.html'));
-});
 
 // ============ GLOBAL ERROR HANDLER ============
 app.use(errorHandler);
