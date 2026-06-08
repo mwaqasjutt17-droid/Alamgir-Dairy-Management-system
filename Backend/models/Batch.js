@@ -9,6 +9,7 @@ const batchSchema = new mongoose.Schema({
   lr: { type: Number, required: true, min: 0 },
   snf: { type: Number },
   ts: { type: Number },
+  totalTs: { type: Number },
   ppl: { type: Number },
   total: { type: Number },
   pass: { type: Boolean, default: false },

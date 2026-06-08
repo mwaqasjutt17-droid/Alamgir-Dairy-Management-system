@@ -293,6 +293,7 @@ function processEntry(){
 
   const snf       = (0.25 * lr) + (0.22 * fat) + 0.72;
   const ts        = fat + snf;
+  const totalTs   = (ts * qty) / 13;
   const waterFlag = lr < lrThreshold;
   const pass      = !waterFlag && fat >= minFat && snf >= minSnf;
 
@@ -301,7 +302,7 @@ function processEntry(){
   else { ppl = (fat * fatRate) + (snf * snfRate); }
   const total = ppl * qty;
 
-  currentResult = { id: container, supplier, date: dateVal, qty, fat, lr, snf, ts, ppl, total, pass, waterFlag, protein, lactose, temp, method };
+  currentResult = { id: container, supplier, date: dateVal, qty, fat, lr, snf, ts, totalTs, ppl, total, pass, waterFlag, protein, lactose, temp, method };
 
   const panel = document.getElementById('resultPanel');
   panel.style.display = 'block';
@@ -313,6 +314,7 @@ function processEntry(){
 
   document.getElementById('outSnf').textContent   = snf.toFixed(2) + '%';
   document.getElementById('outTs').textContent    = ts.toFixed(2) + '%';
+  document.getElementById('outTotalTs').textContent = totalTs.toFixed(2);
   document.getElementById('outPpl').textContent   = 'Rs.' + ppl.toFixed(2);
   document.getElementById('outTotal').textContent = 'Rs.' + total.toLocaleString('en-PK', {minimumFractionDigits:2, maximumFractionDigits:2});
 
@@ -346,6 +348,7 @@ function processEntry(){
   if (lactose) add('Lactose %', lactose.toFixed(2) + '%');
   if (temp !== null) add('Temperature', temp.toFixed(1) + '°C', temp > 8 ? 'var(--red)' : 'var(--green)');
   add('Quantity', qty.toLocaleString() + ' L');
+  add('Total TS (TS% × Qty / 13)', totalTs.toFixed(2), 'var(--purple)');
   add('Pricing Method', method === 'ts' ? 'TS-Based' : 'Two-Axis');
   if (method === 'ts') {
     add('Formula', '(' + ts.toFixed(2) + ' ÷ ' + tsDivisor + ') × ' + baseRate);
@@ -433,29 +436,35 @@ function renderHistory(){
   let data = batches.filter(b => b.id.toLowerCase().includes(q) || (b.supplier || '').toLowerCase().includes(q));
   const tb = document.getElementById('historyTable');
   if (data.length === 0){
-    tb.innerHTML = '<tr><td colspan="12" style="color:var(--text3);text-align:center;padding:36px">No records found</td></tr>';
+    tb.innerHTML = '<tr><td colspan="13" style="color:var(--text3);text-align:center;padding:36px">No records found</td></tr>';
   } else {
-    tb.innerHTML = data.map((b, i) => `
-      <tr>
-        <td class="mono" style="color:var(--blue)">${b.id}</td>
-        <td style="color:var(--text2)">${b.supplier || '—'}</td>
-        <td style="color:var(--text3)">${b.date || '—'}</td>
-        <td>${Number(b.qty).toLocaleString()}</td>
-        <td style="color:var(--amber)">${Number(b.fat).toFixed(1)}%</td>
-        <td><span style="color:${b.waterFlag ? 'var(--red)' : 'var(--text)'}">${Number(b.lr).toFixed(1)}</span></td>
-        <td style="color:var(--blue)">${Number(b.snf).toFixed(2)}%</td>
-        <td style="color:var(--purple)">${Number(b.ts).toFixed(2)}%</td>
-        <td class="mono">Rs.${Number(b.ppl).toFixed(2)}</td>
-        <td class="mono" style="color:var(--green)">Rs.${Number(b.total).toLocaleString('en-PK',{minimumFractionDigits:0,maximumFractionDigits:0})}</td>
-        <td><span class="badge ${b.pass ? 'badge-green' : 'badge-red'}">${b.pass ? 'Pass' : 'Fail'}</span></td>
-        <td><button class="btn btn-ghost btn-sm" onclick="deleteBatch(${i})">✕</button></td>
-      </tr>`).join('');
+    tb.innerHTML = data.map((b, i) => {
+      const itemTotalTs = b.totalTs !== undefined ? b.totalTs : ((Number(b.ts) * Number(b.qty)) / 13);
+      return `
+        <tr>
+          <td class="mono" style="color:var(--blue)">${b.id}</td>
+          <td style="color:var(--text2)">${b.supplier || '—'}</td>
+          <td style="color:var(--text3)">${b.date || '—'}</td>
+          <td>${Number(b.qty).toLocaleString()}</td>
+          <td style="color:var(--amber)">${Number(b.fat).toFixed(1)}%</td>
+          <td><span style="color:${b.waterFlag ? 'var(--red)' : 'var(--text)'}">${Number(b.lr).toFixed(1)}</span></td>
+          <td style="color:var(--blue)">${Number(b.snf).toFixed(2)}%</td>
+          <td style="color:var(--purple)">${Number(b.ts).toFixed(2)}%</td>
+          <td style="color:var(--purple)">${Number(itemTotalTs).toFixed(2)}</td>
+          <td class="mono">Rs.${Number(b.ppl).toFixed(2)}</td>
+          <td class="mono" style="color:var(--green)">Rs.${Number(b.total).toLocaleString('en-PK',{minimumFractionDigits:0,maximumFractionDigits:0})}</td>
+          <td><span class="badge ${b.pass ? 'badge-green' : 'badge-red'}">${b.pass ? 'Pass' : 'Fail'}</span></td>
+          <td><button class="btn btn-ghost btn-sm" onclick="deleteBatch(${i})">✕</button></td>
+        </tr>`;
+    }).join('');
   }
   const totalQ   = data.reduce((a, b) => a + Number(b.qty), 0);
   const totalT   = data.reduce((a, b) => a + Number(b.total), 0);
+  const totalTsSum = data.reduce((a, b) => a + Number(b.totalTs !== undefined ? b.totalTs : ((Number(b.ts) * Number(b.qty)) / 13)), 0);
   const avgF     = data.length ? data.reduce((a, b) => a + Number(b.fat), 0) / data.length : 0;
   const passed   = data.filter(b => b.pass).length;
   document.getElementById('sumQty').textContent   = totalQ.toLocaleString() + ' L';
+  document.getElementById('sumTotalTs').textContent = totalTsSum.toFixed(2);
   document.getElementById('sumTotal').textContent = 'Rs ' + totalT.toLocaleString('en-PK', {maximumFractionDigits:0});
   document.getElementById('avgFat').textContent   = data.length ? avgF.toFixed(2) + '%' : '—';
   document.getElementById('passRate').textContent = data.length ? Math.round(passed / data.length * 100) + '%' : '—';
@@ -508,13 +517,16 @@ async function clearHistory(){
 
 function exportCSV(){
   if (!batches.length) { alert('No data to export.'); return; }
-  const hd   = 'ID,Supplier,Date,Qty(L),Fat%,LR,SNF%,TS%,Rs/L,Total(Rs),Status\n';
-  const rows = batches.map(b => [
-    b.id, b.supplier, b.date, b.qty,
-    Number(b.fat).toFixed(2), Number(b.lr).toFixed(1), Number(b.snf).toFixed(2),
-    Number(b.ts).toFixed(2),  Number(b.ppl).toFixed(2), Number(b.total).toFixed(2),
-    b.pass ? 'Pass' : 'Fail'
-  ].join(',')).join('\n');
+  const hd   = 'ID,Supplier,Date,Qty(L),Fat%,LR,SNF%,TS%,Total TS,Rs/L,Total(Rs),Status\n';
+  const rows = batches.map(b => {
+    const itemTotalTs = b.totalTs !== undefined ? b.totalTs : ((Number(b.ts) * Number(b.qty)) / 13);
+    return [
+      b.id, b.supplier, b.date, b.qty,
+      Number(b.fat).toFixed(2), Number(b.lr).toFixed(1), Number(b.snf).toFixed(2),
+      Number(b.ts).toFixed(2),  Number(itemTotalTs).toFixed(2), Number(b.ppl).toFixed(2), Number(b.total).toFixed(2),
+      b.pass ? 'Pass' : 'Fail'
+    ].join(',');
+  }).join('\n');
   const blob = new Blob([hd + rows], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

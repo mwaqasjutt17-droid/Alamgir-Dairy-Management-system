@@ -424,6 +424,10 @@
             <div class="m-label">Total Solids %</div>
             <div class="m-value" id="outTs">—</div>
           </div>
+          <div class="result-metric" style="--m-color:var(--purple)">
+            <div class="m-label">Total TS</div>
+            <div class="m-value" id="outTotalTs">—</div>
+          </div>
           <div class="result-metric" style="--m-color:var(--blue)">
             <div class="m-label">Price / Liter</div>
             <div class="m-value" id="outPpl">—</div>
@@ -720,6 +724,7 @@
             <th>LR</th>
             <th>SNF %</th>
             <th>TS %</th>
+            <th>Total TS</th>
             <th>Rs/L</th>
             <th>Total (Rs)</th>
             <th>Status</th>
@@ -727,24 +732,28 @@
           </tr>
         </thead>
         <tbody id="historyTable">
-          <tr><td colspan="12" style="color:var(--text3);text-align:center;padding:36px">No records found</td></tr>
+          <tr><td colspan="13" style="color:var(--text3);text-align:center;padding:36px">No records found</td></tr>
         </tbody>
       </table>
     </div>
-    <div style="margin-top:14px;display:flex;gap:12px">
-      <div class="stat-card glow-blue" style="flex:1;text-align:center">
+    <div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap">
+      <div class="stat-card glow-blue" style="flex:1;text-align:center;min-width:140px">
         <div class="stat-label"><span class="dot-ind" style="background:var(--blue)"></span>Total Volume</div>
         <div class="stat-value blue" id="sumQty">0 L</div>
       </div>
-      <div class="stat-card glow-green" style="flex:1;text-align:center">
+      <div class="stat-card glow-purple" style="flex:1;text-align:center;min-width:140px">
+        <div class="stat-label"><span class="dot-ind" style="background:var(--purple)"></span>Total TS Weight</div>
+        <div class="stat-value purple" id="sumTotalTs" style="color:transparent;background:linear-gradient(135deg,var(--purple),#d4aaff);-webkit-background-clip:text;background-clip:text">0</div>
+      </div>
+      <div class="stat-card glow-green" style="flex:1;text-align:center;min-width:140px">
         <div class="stat-label"><span class="dot-ind" style="background:var(--green)"></span>Total Payable</div>
         <div class="stat-value green" id="sumTotal">Rs 0</div>
       </div>
-      <div class="stat-card glow-amber" style="flex:1;text-align:center">
+      <div class="stat-card glow-amber" style="flex:1;text-align:center;min-width:140px">
         <div class="stat-label"><span class="dot-ind" style="background:var(--amber)"></span>Avg Fat %</div>
         <div class="stat-value amber" id="avgFat">—</div>
       </div>
-      <div class="stat-card glow-green" style="flex:1;text-align:center">
+      <div class="stat-card glow-green" style="flex:1;text-align:center;min-width:140px">
         <div class="stat-label"><span class="dot-ind" style="background:var(--green)"></span>Pass Rate</div>
         <div class="stat-value green" id="passRate">—</div>
       </div>
