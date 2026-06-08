@@ -23,6 +23,7 @@ function loadStoredUser() {
 let batches = [];
 let fleetData = [];
 let currentResult = null;
+let toolPlrHistory = [];
 
 // Detect API URL — works served from backend (port 5000), file://, or separate local server (e.g. port 3000/5500)
 const isLocal = window.location.protocol === 'file:' || 
@@ -247,6 +248,7 @@ function showPage(id, evt) {
   if (id === 'history')   renderHistory();
   if (id === 'fleet')     renderFleet();
   if (id === 'analytics') renderAnalytics();
+  if (id === 'tools')     initToolsPage();
 }
 
 // ===================== PRICING METHOD TOGGLE =====================
@@ -396,7 +398,11 @@ async function saveBatch(){
 // ===================== RENDER RECENT =====================
 function renderRecent(){
   const tb = document.getElementById('recentTable');
-  document.getElementById('batchCount').textContent = batches.length;
+  const batchCountEl = document.getElementById('batchCount');
+  if (batchCountEl) {
+    batchCountEl.textContent = batches.length;
+  }
+  if (!tb) return;
   if (batches.length === 0){
     tb.innerHTML = '<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">No batches yet</td></tr>';
     return;
@@ -740,6 +746,244 @@ function showToast(message, type = 'green') {
   `;
   document.body.appendChild(toast);
   setTimeout(() => { toast.style.opacity='0'; toast.style.transition='opacity .3s'; setTimeout(() => toast.remove(), 300); }, 2800);
+}
+
+// ===================== TOOLS & CALCULATORS =====================
+
+function calcKgToLiterRealtime() {
+  const kg = parseFloat(document.getElementById('convKg').value);
+  const density = parseFloat(document.getElementById('convDensity').value);
+  const resVal = document.getElementById('convResult');
+  const formulaVal = document.getElementById('convFormula');
+  const validationVal = document.getElementById('convValidation');
+
+  validationVal.textContent = '';
+
+  if (isNaN(kg) || isNaN(density)) {
+    resVal.textContent = '—';
+    formulaVal.textContent = '— ÷ —';
+    return;
+  }
+
+  if (kg <= 0) {
+    validationVal.textContent = 'Milk weight (KG) must be greater than 0.';
+    resVal.textContent = '—';
+    formulaVal.textContent = '— ÷ —';
+    return;
+  }
+
+  if (density <= 0) {
+    validationVal.textContent = 'Density must be greater than 0.';
+    resVal.textContent = '—';
+    formulaVal.textContent = '— ÷ —';
+    return;
+  }
+
+  const liter = kg / density;
+  resVal.textContent = liter.toFixed(2);
+  formulaVal.textContent = `${kg.toFixed(2)} ÷ ${density.toFixed(3)}`;
+}
+
+async function calcKgToLiterApi() {
+  const kg = parseFloat(document.getElementById('convKg').value);
+  const density = parseFloat(document.getElementById('convDensity').value);
+  const apiBtn = document.getElementById('convApiBtn');
+  const apiResult = document.getElementById('convApiResult');
+
+  if (isNaN(kg) || isNaN(density) || kg <= 0 || density <= 0) {
+    alert('Please enter valid positive values for Weight and Density.');
+    return;
+  }
+
+  apiBtn.disabled = true;
+  apiBtn.textContent = 'Verifying…';
+  apiResult.style.display = 'none';
+
+  try {
+    const res = await apiFetch('/calculations/kg-to-liter', {
+      method: 'POST',
+      body: JSON.stringify({ kg, density })
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      alert('API Error: ' + (json.message || 'Verification failed.'));
+      return;
+    }
+    apiResult.style.display = 'block';
+    apiResult.innerHTML = `
+      <div style="color:var(--teal);margin-bottom:6px">✓ Backend API Response (200 OK)</div>
+      <div>Input KG: <span style="color:var(--text)">${json.kg}</span></div>
+      <div>Input Density: <span style="color:var(--text)">${json.density}</span></div>
+      <div>Calculated Liters: <span style="color:var(--teal);font-weight:700">${json.liter}</span></div>
+    `;
+    showToast('✅ Verification successful!', 'green');
+  } catch (e) {
+    if (e.message !== 'Unauthorized') {
+      console.error(e);
+      alert('Could not verify via backend API. Ensure connection is active.');
+    }
+  } finally {
+    apiBtn.disabled = false;
+    apiBtn.textContent = '🔗 Verify via Backend API';
+  }
+}
+
+function calcToolPerLiterRate() {
+  const ts = parseFloat(document.getElementById('toolTs').value);
+  const baseRate = parseFloat(document.getElementById('toolBaseRate').value);
+  const resVal = document.getElementById('toolPlrResult');
+  const formulaVal = document.getElementById('toolPlrFormula');
+
+  if (isNaN(ts) || isNaN(baseRate) || ts <= 0 || baseRate <= 0) {
+    resVal.textContent = '—';
+    formulaVal.textContent = '— × — ÷ 13';
+    return;
+  }
+
+  const rate = (ts * baseRate) / 13;
+  resVal.textContent = rate.toFixed(2);
+  formulaVal.textContent = `${ts.toFixed(2)} × ${baseRate.toFixed(0)} ÷ 13`;
+}
+
+async function calcToolPerLiterRateApi() {
+  const ts = parseFloat(document.getElementById('toolTs').value);
+  const baseRate = parseFloat(document.getElementById('toolBaseRate').value);
+  const apiBtn = document.getElementById('toolPlrApiBtn');
+  const apiResult = document.getElementById('toolPlrApiResult');
+
+  if (isNaN(ts) || isNaN(baseRate) || ts <= 0 || baseRate <= 0) {
+    alert('Please enter valid positive values for TS and Base Rate.');
+    return;
+  }
+
+  apiBtn.disabled = true;
+  apiBtn.textContent = 'Verifying…';
+  apiResult.style.display = 'none';
+
+  try {
+    const res = await apiFetch('/calculations/per-liter-rate', {
+      method: 'POST',
+      body: JSON.stringify({ ts, baseRate })
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      alert('API Error: ' + (json.message || 'Verification failed.'));
+      return;
+    }
+    apiResult.style.display = 'block';
+    apiResult.innerHTML = `
+      <div style="color:var(--amber);margin-bottom:6px">✓ Backend API Response (200 OK)</div>
+      <div>Input TS %: <span style="color:var(--text)">${json.ts}%</span></div>
+      <div>Base Rate: <span style="color:var(--text)">Rs. ${json.baseRate}</span></div>
+      <div>Calculated Rate: <span style="color:var(--amber);font-weight:700">Rs. ${json.perLiterRate}</span></div>
+    `;
+    showToast('✅ Verification successful!', 'green');
+    // Auto save calculation to history
+    saveToolPlrHistory(json.ts, json.baseRate, json.perLiterRate, true);
+  } catch (e) {
+    if (e.message !== 'Unauthorized') {
+      console.error(e);
+      alert('Could not verify via backend API. Ensure connection is active.');
+    }
+  } finally {
+    apiBtn.disabled = false;
+    apiBtn.textContent = '🔗 Verify via Backend API';
+  }
+}
+
+function loadToolPlrHistory() {
+  const data = localStorage.getItem('tool_plr_history');
+  if (data) {
+    try { toolPlrHistory = JSON.parse(data); } catch(e) { toolPlrHistory = []; }
+  } else {
+    toolPlrHistory = [];
+  }
+}
+
+function saveToolPlrHistoryToStorage() {
+  localStorage.setItem('tool_plr_history', JSON.stringify(toolPlrHistory));
+}
+
+function renderToolPlrHistory() {
+  const tb = document.getElementById('toolPlrHistoryTable');
+  if (!tb) return;
+  if (toolPlrHistory.length === 0) {
+    tb.innerHTML = '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:12px;font-size:11px">No history yet</td></tr>';
+    return;
+  }
+  tb.innerHTML = toolPlrHistory.map((item, index) => `
+    <tr>
+      <td class="mono" style="color:var(--purple)">${Number(item.ts).toFixed(2)}%</td>
+      <td class="mono">Rs. ${Number(item.baseRate).toFixed(0)}</td>
+      <td class="mono" style="color:var(--amber)">Rs. ${Number(item.rate).toFixed(2)}</td>
+      <td style="color:var(--text3);font-size:10px">${item.time}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="deleteToolPlrHistory(${index})" style="padding:2px 6px;color:var(--red);border:none;background:none;cursor:pointer">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function saveToolPlrHistory(tsInput, baseRateInput, rateInput, silent = false) {
+  let ts = tsInput;
+  let baseRate = baseRateInput;
+  let rate = rateInput;
+
+  if (ts === undefined || baseRate === undefined || rate === undefined) {
+    ts = parseFloat(document.getElementById('toolTs').value);
+    baseRate = parseFloat(document.getElementById('toolBaseRate').value);
+    if (isNaN(ts) || isNaN(baseRate) || ts <= 0 || baseRate <= 0) {
+      alert('Please enter valid positive TS and Base Rate values to save.');
+      return;
+    }
+    rate = (ts * baseRate) / 13;
+  }
+
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  // Prevent duplicate consecutive entries to keep clean logs
+  if (toolPlrHistory.length > 0) {
+    const last = toolPlrHistory[0];
+    if (last.ts === ts && last.baseRate === baseRate && Math.abs(last.rate - rate) < 0.01) {
+      // Already logged as the most recent calculation, skip duplicate
+      return;
+    }
+  }
+
+  toolPlrHistory.unshift({ ts, baseRate, rate, time });
+  if (toolPlrHistory.length > 10) {
+    toolPlrHistory = toolPlrHistory.slice(0, 10);
+  }
+  saveToolPlrHistoryToStorage();
+  renderToolPlrHistory();
+  if (!silent) {
+    showToast('✅ Calculation saved!', 'amber');
+  }
+}
+
+function deleteToolPlrHistory(index) {
+  toolPlrHistory.splice(index, 1);
+  saveToolPlrHistoryToStorage();
+  renderToolPlrHistory();
+  showToast('Entry deleted.', 'amber');
+}
+
+function clearToolPlrHistory() {
+  toolPlrHistory = [];
+  saveToolPlrHistoryToStorage();
+  renderToolPlrHistory();
+  showToast('History cleared.', 'amber');
+}
+
+function initToolsPage() {
+  calcKgToLiterRealtime();
+  calcToolPerLiterRate();
+  loadToolPlrHistory();
+  renderToolPlrHistory();
+  document.getElementById('convApiResult').style.display = 'none';
+  document.getElementById('toolPlrApiResult').style.display = 'none';
+  document.getElementById('convApiResult').innerHTML = '';
+  document.getElementById('toolPlrApiResult').innerHTML = '';
 }
 
 // ===================== INIT =====================

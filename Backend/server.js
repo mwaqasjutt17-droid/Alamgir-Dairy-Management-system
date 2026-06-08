@@ -11,10 +11,11 @@ const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
 // Route files
-const authRoutes = require('./routes/auth');
-const batchRoutes = require('./routes/batches');
-const fleetRoutes = require('./routes/fleet');
-const settingsRoutes = require('./routes/settings');
+const authRoutes         = require('./routes/auth');
+const batchRoutes        = require('./routes/batches');
+const fleetRoutes        = require('./routes/fleet');
+const settingsRoutes     = require('./routes/settings');
+const calculationsRoutes = require('./routes/calculations');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -104,6 +105,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/batches', batchRoutes);
 app.use('/api/fleet', fleetRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/calculations', calculationsRoutes);
 
 // Health check — confirms backend is live
 app.get('/', (req, res) => {
